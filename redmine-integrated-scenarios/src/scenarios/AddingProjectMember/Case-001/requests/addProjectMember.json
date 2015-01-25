@@ -1,0 +1,15 @@
+{
+"apiUrl":"http://testdomain.m.redmine.org",
+"apiKey":"2c8338198c4f29ed56868d44bb469f6915e2ac55",
+"responseType":"json",
+"projectId":"1",
+"userId":"4",
+"roleIds":"[3,4]",
+"linkedinApiUrl":"https://api.linkedin.com",
+"linkedinAccessToken":"AQUStjJvTEfgJBZL7-kMjaaT9CaNxmeSqInNKU0gt9Ea9DZLoQGYQ5kz9TpWjP1jlt3acAh1c9MNqN8ZVOD3Jy8RvzzOTwSIk21h7zPOyAlLxmE6swdPrkgudy8Q5xcCKoFQO7ltpD0JcstoCGv4B9Sguo4VC4WQ5OkwANUAf2M2iDp1rWM",
+"surveymonkeyApiUrl":"https://api.surveymonkey.net",
+"surveymonkeyAccessToken":"paTBz61kMlD0mPWrsaHR3921EuYbHlBvqU0GDZQ.5nahBvB1GbdZpbh2WnOzXY4SzYYpDy7zC2BtsoUxxCm-5snVPpjHTMgHFAlPcq.FLQY=",
+"surveymonkeyApiKey":"43xd9y3cjnhb9eab9pv8ksav",
+"username":"shakila@wso2.com",
+"oauthAccessToken":"ya29.AwEU2VzdJ9zcO2tkyEuLjnPhO00wVgD4szwra0yWJY0ONUjRifl6zHh90cs5EpqzfqTvNHWycKvPzQ"
+}

@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<proxy xmlns="http://ws.apache.org/ns/synapse"
+       name="getSurveyResult"
+       transports="https,http"
+       statistics="disable"
+       trace="disable"
+       startOnLoad="true">
+    <target>
+        <inSequence onError="faultHandlerSeq">
+            <property name="username" expression="json-eval($.username)"/>
+            <property name="oauthAccessToken" expression="json-eval($.oauthAccessToken)"/>
+            <property name="surveymonkeyApiUrl" expression="json-eval($.surveymonkeyApiUrl)"/>
+            <property name="surveymonkeyAccessToken"
+                      expression="json-eval($.surveymonkeyAccessToken)"/>
+            <property name="surveymonkeyApiKey" expression="json-eval($.surveymonkeyApiKey)"/>
+            <property name="redmineApiUrl" expression="json-eval($.redmineApiUrl)"/>
+            <property name="redmineApiKey" expression="json-eval($.redmineApiKey)"/>
+            <property name="responseType" expression="json-eval($.responseType)"/>
+            <property name="projectId" value=""/>
+            <property name="index" value="0" scope="operation"/>
+            <surveymonkey.init>
+                <accessToken>{$ctx:surveymonkeyAccessToken}</accessToken>
+                <apiUrl>{$ctx:surveymonkeyApiUrl}</apiUrl>
+                <apiKey>{$ctx:surveymonkeyApiKey}</apiKey>
+            </surveymonkey.init>
+            <redmine.init>
+                <apiUrl>{$ctx:redmineApiUrl}</apiUrl>
+                <apiKey>{$ctx:redmineApiKey}</apiKey>
+                <responseType>{$ctx:responseType}</responseType>
+            </redmine.init>
+            <redmine.listProjects/>
+            <iterate continueParent="true"
+                     id="projectsIterator"
+                     preservePayload="true"
+                     expression="//projects"
+                     sequential="true">
+                <target>
+                    <sequence>
+                        <property name="projectId" expression="//id/text()"/>
+                        <property name="survemonkeySurveyTitle"
+                                  expression="fn:concat('Redmine project ', get-property('projectId'))"/>
+                        <surveymonkey.init>
+                            <accessToken>{$ctx:surveymonkeyAccessToken}</accessToken>
+                            <apiUrl>{$ctx:surveymonkeyApiUrl}</apiUrl>
+                            <apiKey>{$ctx:surveymonkeyApiKey}</apiKey>
+                        </surveymonkey.init>
+                        <surveymonkey.getSurveyList>
+                            <title>{$ctx:survemonkeySurveyTitle}</title>
+                        </surveymonkey.getSurveyList>
+                        <property name="getSurveyListStatusCode" expression="$axis2:HTTP_SC"/>
+                        <filter source="get-property('getSurveyListStatusCode') = 200" regex="true">
+                            <then>
+                                <property name="surveyId" expression="//survey_id/text()"/>
+                                <surveymonkey.init>
+                                    <accessToken>{$ctx:surveymonkeyAccessToken}</accessToken>
+                                    <apiUrl>{$ctx:surveymonkeyApiUrl}</apiUrl>
+                                    <apiKey>{$ctx:surveymonkeyApiKey}</apiKey>
+                                </surveymonkey.init>
+                                <surveymonkey.getSurveyDetails>
+                                    <surveyId>{$ctx:surveyId}</surveyId>
+                                </surveymonkey.getSurveyDetails>
+                                <property name="numberOfResponses"
+                                          expression="//num_responses/text()"
+                                          scope="operation"/>
+                                <filter xpath="0 != get-property('operation', 'numberOfResponses')">
+                                    <then>
+                                        <redmine.init>
+                                            <apiUrl>{$ctx:redmineApiUrl}</apiUrl>
+                                            <apiKey>{$ctx:redmineApiKey}</apiKey>
+                                            <responseType>{$ctx:responseType}</responseType>
+                                        </redmine.init>
+                                        <redmine.getProject>
+                                            <id>{$ctx:projectId}</id>
+                                            <include>{$ctx:include}</include>
+                                        </redmine.getProject>
+                                        <property name="projectName" expression="//name/text()" scope="operation"/>
+                                        <property name="textContent"
+                                                  expression="fn:concat(get-property('textContent'),get-property('operation', 'projectName'),':-',get-property('operation', 'numberOfResponses'))"/>
+                                    </then>
+                                </filter>
+                            </then>
+                        </filter>
+                    </sequence>
+                </target>
+            </iterate>
+            <filter xpath="get-property('textContent')!= ''">
+                <then>
+                    <redmine.init>
+                        <apiUrl>{$ctx:redmineApiUrl}</apiUrl>
+                        <apiKey>{$ctx:redmineApiKey}</apiKey>
+                        <responseType>{$ctx:responseType}</responseType>
+                    </redmine.init>
+                    <redmine.getIssueCategories>
+                        <projectId>{$ctx:projectId}</projectId>
+                    </redmine.getIssueCategories>
+                    <iterate continueParent="true"
+                             id="assigneesIterator"
+                             preservePayload="true"
+                             expression="//issue_categories"
+                             sequential="true">
+                        <target>
+                            <sequence>
+                                <property name="assignedId" expression="//assigned_to/id/text()"/>
+                                <filter xpath="get-property('assignedId')!= ''">
+                                    <then>
+                                        <redmine.init>
+                                            <apiUrl>{$ctx:redmineApiUrl}</apiUrl>
+                                            <apiKey>{$ctx:redmineApiKey}</apiKey>
+                                            <responseType>{$ctx:responseType}</responseType>
+                                        </redmine.init>
+                                        <redmine.getUser>
+                                            <userId>{$ctx:assignedId}</userId>
+                                            <include>{$ctx:include}</include>
+                                        </redmine.getUser>
+                                        <property name="assigneeEmail" expression="//mail/text()"/>
+                                        <filter xpath="get-property('assigneeEmail')!= ''">
+                                            <then>
+                                                <property name="toRecipients"
+                                                          expression="fn:concat(get-property('toRecipients'),get-property('assigneeEmail'),',')"/>
+                                            </then>
+                                        </filter>
+                                    </then>
+                                </filter>
+                            </sequence>
+                        </target>
+                    </iterate>
+                </then>
+            </filter>
+            <filter xpath="get-property('toRecipients')= null or get-property('toRecipients')= '' or get-property('textContent')= ''">
+                <then>
+                    <property name="message"
+                              value="Unable to send the mail (Recipients or message is empty)."/>
+                    <call-template target="responseHandlerTemplate">
+                        <with-param name="activity" value="gmail.sendMail"/>
+                        <with-param name="id" value="{$ctx:id}"/>
+                        <with-param name="status" value="Error"/>
+                        <with-param name="message" value="{$ctx:message}"/>
+                    </call-template>
+                    <loopback/>
+                </then>
+                <else>
+                    <call-template target="sendSurveyResult">
+                        <with-param name="toRecipients" value="{$ctx:toRecipients}"/>
+                        <with-param name="textContent" value="{$ctx:textContent}"/>
+                        <with-param name="username" value="{$ctx:username}"/>
+                        <with-param name="oauthAccessToken" value="{$ctx:oauthAccessToken}"/>
+                    </call-template>
+                    <loopback/>
+                </else>
+            </filter>
+            <filter xpath="get-property('operation', 'index') = get-property('operation', 'numberOfResponses')">
+                <then>
+                    <loopback/>
+                </then>
+            </filter>
+        </inSequence>
+        <outSequence>
+            <property name="messageType" value="application/json" scope="axis2"/>
+            <payloadFactory media-type="json">
+                <format>
+                    {
+                    "Response":{
+                    "process":"sendSurveyResult",
+                    "activityResponse":[$1]
+                    }
+                    }
+                </format>
+                <args>
+                    <arg evaluator="xml"
+                         expression="get-property('operation', 'responseString')"/>
+                </args>
+            </payloadFactory>
+            <send/>
+        </outSequence>
+    </target>
+    <description/>
+</proxy>

@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<proxy xmlns="http://ws.apache.org/ns/synapse"
+       name="addAProjectMemberInRedmine"
+       transports="https,http"
+       statistics="disable"
+       trace="disable"
+       startOnLoad="true">
+    <target>
+        <inSequence onError="faultHandlerSeq">
+            <property name="apiUrl" expression="json-eval($.apiUrl)"/>
+            <property name="apiKey" expression="json-eval($.apiKey)"/>
+            <property name="responseType" expression="json-eval($.responseType)"/>
+            <property name="projectId" expression="json-eval($.projectId)"/>
+            <property name="roleIds" expression="json-eval($.roleIds)"/>
+            <property name="userId" expression="json-eval($.userId)"/>
+            <property name="include" expression="json-eval($.include)"/>
+            <property name="redmineProjectName" value=""/>
+            <property name="redmineEmailId" value=""/>
+            <property name="redmineFirstName" value=""/>
+            <property name="redmineLastName" value=""/>
+            <property name="linkedinApiUrl" expression="json-eval($.linkedinApiUrl)"/>
+            <property name="linkedinAccessToken"
+                      expression="json-eval($.linkedinAccessToken)"/>
+            <property name="uri.var.surveyId" expression="json-eval($.surveyId)"/>
+            <property name="surveymonkeyApiUrl" expression="json-eval($.surveymonkeyApiUrl)"/>
+            <property name="surveymonkeyAccessToken"
+                      expression="json-eval($.surveymonkeyAccessToken)"/>
+            <property name="surveymonkeyApiKey" expression="json-eval($.surveymonkeyApiKey)"/>
+            <property name="surveymonkeyApiUrl" expression="json-eval($.surveymonkeyApiUrl)"/>
+            <property name="surveymonkeyAccessToken"
+                      expression="json-eval($.surveymonkeyAccessToken)"/>
+            <property name="surveymonkeyApiKey" expression="json-eval($.surveymonkeyApiKey)"/>
+            <property name="username" expression="json-eval($.username)"/>
+            <property name="oauthAccessToken" expression="json-eval($.oauthAccessToken)"/>
+            <redmine.init>
+                <apiUrl>{$ctx:apiUrl}</apiUrl>
+                <apiKey>{$ctx:apiKey}</apiKey>
+                <responseType>{$ctx:responseType}</responseType>
+            </redmine.init>
+            <redmine.addProjectMember>
+                <projectId>{$ctx:projectId}</projectId>
+                <userId>{$ctx:userId}</userId>
+                <roleIds>{$ctx:roleIds}</roleIds>
+            </redmine.addProjectMember>
+            <property name="addProjectMemberStatusCode" expression="$axis2:HTTP_SC"/>
+            <filter source="get-property('addProjectMemberStatusCode') != 201" regex="true">
+                <then>
+                    <property name="message" expression="//errors"/>
+                    <property name="message"
+                              expression="fn:concat('Error: ', get-property('message'))"/>
+                    <call-template target="responseHandlerTemplate">
+                        <with-param name="activity" value="redmine.addProjectMember"/>
+                        <with-param name="id" value="{$ctx:id}"/>
+                        <with-param name="status" value="Error"/>
+                        <with-param name="message" value="{$ctx:message}"/>
+                    </call-template>
+                    <loopback/>
+                </then>
+                <else>
+                    <redmine.getUser>
+                        <userId>{$ctx:userId}</userId>
+                        <include>{$ctx:include}</include>
+                    </redmine.getUser>
+                    <property name="redmineEmailId" expression="//mail/text()"/>
+                    <property name="redmineFirstName" expression="//firstname/text()"/>
+                    <property name="redmineLastName" expression="//lastname/text()"/>
+                    <surveymonkey.init>
+                        <accessToken>{$ctx:surveymonkeyAccessToken}</accessToken>
+                        <apiUrl>{$ctx:surveymonkeyApiUrl}</apiUrl>
+                        <apiKey>{$ctx:surveymonkeyApiKey}</apiKey>
+                    </surveymonkey.init>
+                    <property name="survemonkeySurveyTitle"
+                              expression="fn:concat('Redmine project ',get-property('projectId'))"/>
+                    <surveymonkey.getSurveyList>
+                        <title>{$ctx:survemonkeySurveyTitle}</title>
+                    </surveymonkey.getSurveyList>
+                    <property name="getSurveyListStatusCode" expression="$axis2:HTTP_SC"/>
+                    <property name="fields" value="[&#34;url&#34;]"/>
+                    <filter source="get-property('getSurveyListStatusCode') = 200" regex="true">
+                        <then>
+                            <property name="surveyId" expression="//survey_id/text()"/>
+                            <filter source="get-property('surveyId') != ''" regex="true">
+                                <then>
+                                    <surveymonkey.init>
+                                        <accessToken>{$ctx:surveymonkeyAccessToken}</accessToken>
+                                        <apiUrl>{$ctx:surveymonkeyApiUrl}</apiUrl>
+                                        <apiKey>{$ctx:surveymonkeyApiKey}</apiKey>
+                                    </surveymonkey.init>
+                                    <surveymonkey.getCollectorList>
+                                        <surveyId>{$ctx:surveyId}</surveyId>
+                                        <fields>{$ctx:fields}</fields>
+                                    </surveymonkey.getCollectorList>
+                                    <property name="getCollectorListStatusCode" expression="$axis2:HTTP_SC"/>
+                                    <filter source="get-property('getCollectorListStatusCode') = 200" regex="true">
+                                        <then>
+                                            <property name="url" expression="//url/text()"/>
+                                            <redmine.init>
+                                                <apiUrl>{$ctx:apiUrl}</apiUrl>
+                                                <apiKey>{$ctx:apiKey}</apiKey>
+                                                <responseType>{$ctx:responseType}</responseType>
+                                            </redmine.init>
+                                            <redmine.getProjectMemberships>
+                                                <projectId>{$ctx:projectId}</projectId>
+                                            </redmine.getProjectMemberships>
+                                            <property name="numberOfProjectMembers" expression="//total_count/text()"/>
+                                            <redmine.getProject>
+                                                <id>{$ctx:projectId}</id>
+                                                <include>{$ctx:include}</include>
+                                            </redmine.getProject>
+                                            <property name="redmineProjectName" expression="//project/name/text()"/>
+                                            <property name="textContent"
+                                                      expression="fn:concat(get-property('numberOfProjectMembers'),' member(s) are working on this ',get-property('redmineProjectName'),' project. Please rate your project on redmine: ',get-property('url'))"/>
+                                            <property name="subject" value="Redmine project"/>
+                                            <gmail.init>
+                                                <username>{$ctx:username}</username>
+                                                <oauthAccessToken>{$ctx:oauthAccessToken}</oauthAccessToken>
+                                            </gmail.init>
+                                            <gmail.sendMail>
+                                                <subject>{$ctx:subject}</subject>
+                                                <toRecipients>{$ctx:redmineEmailId}</toRecipients>
+                                                <ccRecipients>{$ctx:ccRecipients}</ccRecipients>
+                                                <bccRecipients>{$ctx:bccRecipients}</bccRecipients>
+                                                <textContent>{$ctx:textContent}</textContent>
+                                                <attachmentIDs>{$ctx:attachmentIDs}</attachmentIDs>
+                                            </gmail.sendMail>
+                                            <property name="sendMailStatusCode" expression="$axis2:HTTP_SC"/>
+                                            <filter source="get-property('sendMailStatusCode') != 200" regex="true">
+                                                <then>
+                                                    <property name="sendMailMessage" expression="//errors"/>
+                                                    <call-template target="responseHandlerTemplate">
+                                                        <with-param name="activity" value="gmail.sendMail"/>
+                                                        <with-param name="id" value="{$ctx:redmineEmailId}"/>
+                                                        <with-param name="status" value="Error"/>
+                                                        <with-param name="message" value="{$ctx:sendMailMessage}"/>
+                                                    </call-template>
+                                                </then>
+                                            </filter>
+                                        </then>
+                                    </filter>
+                                </then>
+                            </filter>
+                        </then>
+                    </filter>
+                    <property name="contentType" value="linkedin-html"/>
+                    <property name="postBody"
+                              expression="fn:concat(get-property('redmineFirstName'),' ',get-property('redmineLastName'), ' has been added as a member on ',get-property('redmineProjectName'),' with the project id: ',get-property('projectId'))"/>
+                    <call-template target="addProjectMemberInRedmine">
+                        <with-param name="contentType" value="{$ctx:contentType}"/>
+                        <with-param name="postBody" value="{$ctx:postBody}"/>
+                        <with-param name="linkedinAccessToken" value="{$ctx:linkedinAccessToken}"/>
+                        <with-param name="linkedinApiUrl" value="{$ctx:linkedinApiUrl}"/>
+                    </call-template>
+                    <loopback/>
+                </else>
+            </filter>
+        </inSequence>
+        <outSequence>
+            <property name="messageType" value="application/json" scope="axis2"/>
+            <payloadFactory media-type="json">
+                <format>
+                    {
+                    "Response":{
+                    "process":"addProjectMemberInRedmine",
+                    "activityResponse":[$1]
+                    }
+                    }
+                </format>
+                <args>
+                    <arg evaluator="xml"
+                         expression="get-property('operation', 'responseString')"/>
+                </args>
+            </payloadFactory>
+            <send/>
+        </outSequence>
+    </target>
+    <description/>
+</proxy>

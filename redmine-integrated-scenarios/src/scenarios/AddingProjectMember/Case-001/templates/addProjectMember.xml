@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<template name="addProjectMemberInRedmine" xmlns="http://ws.apache.org/ns/synapse">
+    <!-- Linkedin parameters -->
+    <parameter name="contentType"
+               description="Indicates that you may have a limited subset of HTML within the contents of your update" />
+    <parameter name="postBody" description="The actual content of the update" />
+    <parameter name="linkedinApiUrl" description="The url of the api" />
+    <parameter name="linkedinAccessToken" description="The access token" />
+    <sequence>
+		<!-- Linkedin properties -->
+        <property name="uri.var.contentType" expression="$func:contentType" />
+        <property name="uri.var.postBody" expression="$func:postBody" />
+        <property name="uri.var.linkedinApiUrl" expression="$func:linkedinApiUrl" />
+        <property name="uri.var.linkedinAccessToken" expression="$func:linkedinAccessToken" />
+
+        <!-- Remove linkedin response header information -->
+		<header name="Connection" scope="transport" action="remove" />
+		<header name="Content-Encoding" scope="transport" action="remove" />
+		<header name="Content-Type" scope="transport" action="remove" />
+		<header name="Date" scope="transport" action="remove" />
+		<header name="P3P" scope="transport" action="remove" />
+		<header name="Server" scope="transport" action="remove" />
+		<header name="Status" scope="transport" action="remove" />
+		<header name="Transfer-Encoding" scope="transport" action="remove" />
+		<header name="Vary" scope="transport" action="remove" />
+		<header name="X-Content-Type-Options" scope="transport" action="remove" />
+		<header name="X-Frame-Option" scope="transport" action="remove" />
+		<header name="X-Request-Id" scope="transport" action="remove" />
+		<header name="X-Served-With" scope="transport" action="remove" />
+		<header name="X-ShardId" scope="transport" action="remove" />
+		<header name="X-ShopId" scope="transport" action="remove" />
+		<header name="X-Stats-UserId" scope="transport" action="remove" />
+		<header name="X-UA-Compatible" scope="transport" action="remove" />
+		<header name="X-XSS-Protection" scope="transport" action="remove" />
+
+		<property name="messageType" value="application/json" scope="axis2" />
+
+        <linkedin.init>
+            <accessToken>{$ctx:linkedinAccessToken}</accessToken>
+            <apiUrl>{$ctx:linkedinApiUrl}</apiUrl>
+        </linkedin.init>
+        <linkedin.sendActivity>
+            <body>{$ctx:postBody}</body>
+            <contentType>{$ctx:contentType}</contentType>
+        </linkedin.sendActivity>
+
+        <property name="sendActivityStatusCode" expression="$axis2:HTTP_SC" />
+
+		<!-- Checks the sendActivity method of linkedin -->
+
+        <filter source="get-property('sendActivityStatusCode') = 201" regex="true">
+            <then>
+                <!-- Success -->
+                <property name="uri.var.activity" value="linkedin.sendActivity" />
+                <property name="uri.var.id" value="" />
+                <property name="uri.var.status" value="Success" />
+                <property name="uri.var.message" value="Successfully send the activity" />
+            </then>
+            <else>
+				<!-- Error in sending the activity -->
+				<property name="uri.var.linkedinSendActivityErrorMessage" expression="json-eval($)" />
+				<script language="js">
+			         <![CDATA[
+			         	//Replaces the Double quotes to maintain valid JSON responce
+			         	var linkedinSendActivityErrorMessage = mc.getProperty('uri.var.linkedinSendActivityErrorMessage');
+			         	mc.setProperty('uri.var.linkedinSendActivityErrorMessage', linkedinSendActivityErrorMessage.replace('"', '\\"'));
+			          ]]>
+				</script>
+
+				<property name="uri.var.activity" value="linkedin.sendActivity" />
+				<property name="uri.var.id" value="" />
+				<property name="uri.var.status" value="Error" />
+				<property name="uri.var.message"
+					expression="fn:concat('Could not post the network update, Error: ', get-property('uri.var.linkedinSendActivityErrorMessage'))" />
+			</else>
+
+
+		</filter>
+
+		<!-- Response generator -->
+		<call-template target="responseHandlerTemplate">
+			<with-param name="activity" value="{$ctx:uri.var.activity}" />
+			<with-param name="id" value="{$ctx:uri.var.id}" />
+			<with-param name="status" value="{$ctx:uri.var.status}" />
+			<with-param name="message" value="{$ctx:uri.var.message}" />
+		</call-template>
+
+
+	</sequence>
+</template>
