@@ -3,49 +3,48 @@
 	Then fulfilles the order and creates a Shipment in Shippo -->
 <template name="sendSurveyResult" xmlns="http://ws.apache.org/ns/synapse">
     <!-- Gmail parameters -->
-    <parameter name="username" description="Username of the e-mail account" />
-    <parameter name="oauthAccessToken" description="OAuth access token to send the mail" />
-    <parameter name="subject" description="(Optional) Subject of the e-mail message" />
-    <parameter name="toRecipients" description="A comma seperated list of recipients" />
-    <parameter name="ccRecipients" description="A comma seperated list of cc recipients" />
-    <parameter name="bccRecipients" description="A comma seperated list of bcc recipients" />
-    <parameter name="textContent" description="(Optional) Text content of the mail" />
+    <parameter name="username" description="Username of the e-mail account"/>
+    <parameter name="oauthAccessToken" description="OAuth access token to send the mail"/>
+    <parameter name="subject" description="(Optional) Subject of the e-mail message"/>
+    <parameter name="toRecipients" description="A comma seperated list of recipients"/>
+    <parameter name="ccRecipients" description="A comma seperated list of cc recipients"/>
+    <parameter name="bccRecipients" description="A comma seperated list of bcc recipients"/>
+    <parameter name="textContent" description="(Optional) Text content of the mail"/>
     <parameter name="attachmentIDs"
-               description="(Optional) A comma seperated list of content IDs(should be same as the file names) of attachments" />
+               description="(Optional) A comma seperated list of content IDs(should be same as the file names) of attachments"/>
     <sequence>
         <!-- Gmail properties -->
-        <property name="username" expression="$func:username" />
-        <property name="oauthAccessToken" expression="$func:oauthAccessToken" />
-        <property name="operatorName" value="Gmail : SendMail" />
-        <property name="subject" value="Redmine issues survey result" />
-        <property name="toRecipients" expression="$func:toRecipients" />
-        <property name="ccRecipients" expression="$func:ccRecipients" />
-        <property name="bccRecipients" expression="$func:bccRecipients" />
-        <property name="textContent" expression="$func:textContent" />
-        <property name="attachmentIDs" expression="$func:attachmentIDs" />
+        <property name="username" expression="$func:username"/>
+        <property name="oauthAccessToken" expression="$func:oauthAccessToken"/>
+        <property name="operatorName" value="Gmail : SendMail"/>
+        <property name="subject" value="Redmine issues survey result"/>
+        <property name="toRecipients" expression="$func:toRecipients"/>
+        <property name="ccRecipients" expression="$func:ccRecipients"/>
+        <property name="bccRecipients" expression="$func:bccRecipients"/>
+        <property name="textContent" expression="$func:textContent"/>
+        <property name="attachmentIDs" expression="$func:attachmentIDs"/>
 
         <!-- Remove linkedin response header information -->
-		<header name="Connection" scope="transport" action="remove" />
-		<header name="Content-Encoding" scope="transport" action="remove" />
-		<header name="Content-Type" scope="transport" action="remove" />
-		<header name="Date" scope="transport" action="remove" />
-		<header name="P3P" scope="transport" action="remove" />
-		<header name="Server" scope="transport" action="remove" />
-		<header name="Status" scope="transport" action="remove" />
-		<header name="Transfer-Encoding" scope="transport" action="remove" />
-		<header name="Vary" scope="transport" action="remove" />
-		<header name="X-Content-Type-Options" scope="transport" action="remove" />
-		<header name="X-Frame-Option" scope="transport" action="remove" />
-		<header name="X-Request-Id" scope="transport" action="remove" />
-		<header name="X-Served-With" scope="transport" action="remove" />
-		<header name="X-ShardId" scope="transport" action="remove" />
-		<header name="X-ShopId" scope="transport" action="remove" />
-		<header name="X-Stats-UserId" scope="transport" action="remove" />
-		<header name="X-UA-Compatible" scope="transport" action="remove" />
-		<header name="X-XSS-Protection" scope="transport" action="remove" />
+        <header name="Connection" scope="transport" action="remove"/>
+        <header name="Content-Encoding" scope="transport" action="remove"/>
+        <header name="Content-Type" scope="transport" action="remove"/>
+        <header name="Date" scope="transport" action="remove"/>
+        <header name="P3P" scope="transport" action="remove"/>
+        <header name="Server" scope="transport" action="remove"/>
+        <header name="Status" scope="transport" action="remove"/>
+        <header name="Transfer-Encoding" scope="transport" action="remove"/>
+        <header name="Vary" scope="transport" action="remove"/>
+        <header name="X-Content-Type-Options" scope="transport" action="remove"/>
+        <header name="X-Frame-Option" scope="transport" action="remove"/>
+        <header name="X-Request-Id" scope="transport" action="remove"/>
+        <header name="X-Served-With" scope="transport" action="remove"/>
+        <header name="X-ShardId" scope="transport" action="remove"/>
+        <header name="X-ShopId" scope="transport" action="remove"/>
+        <header name="X-Stats-UserId" scope="transport" action="remove"/>
+        <header name="X-UA-Compatible" scope="transport" action="remove"/>
+        <header name="X-XSS-Protection" scope="transport" action="remove"/>
 
-		<property name="messageType" value="application/json" scope="axis2" />
-
+        <property name="messageType" value="application/json" scope="axis2"/>
         <gmail.init>
             <username>{$ctx:username}</username>
             <oauthAccessToken>{$ctx:oauthAccessToken}</oauthAccessToken>
@@ -58,48 +57,39 @@
             <textContent>{$ctx:textContent}</textContent>
             <attachmentIDs>{$ctx:attachmentIDs}</attachmentIDs>
         </gmail.sendMail>
-
-        <property name="sendMailStatusCode" expression="$axis2:HTTP_SC" />
-
-		<!-- Checks the sendMail method of Gmail -->
-
+        <property name="sendMailStatusCode" expression="$axis2:HTTP_SC"/>
+        <!-- Checks the sendMail method of Gmail -->
         <filter source="get-property('sendMailStatusCode') = 200" regex="true">
             <then>
                 <!-- Success -->
-                <property name="uri.var.activity" value="gmail.sendMail" />
-                <property name="uri.var.id" value="" />
-                <property name="uri.var.status" value="Success" />
-                <property name="uri.var.message" value="Successfully send the mail" />
+                <property name="uri.var.activity" value="gmail.sendMail"/>
+                <property name="uri.var.id" value=""/>
+                <property name="uri.var.status" value="Success"/>
+                <property name="uri.var.message" value="Successfully send the mail"/>
             </then>
             <else>
-				<!-- Error in sending the mail -->
-				<property name="uri.var.sendMailErrorMessage" expression="json-eval($)" />
-				<script language="js">
-			         <![CDATA[
+                <!-- Error in sending the mail -->
+                <property name="uri.var.sendMailErrorMessage" expression="json-eval($)"/>
+                <script language="js">
+                    <![CDATA[
 			         	//Replaces the Double quotes to maintain valid JSON responce
 			         	var sendMailErrorMessage = mc.getProperty('uri.var.sendMailErrorMessage');
 			         	mc.setProperty('uri.var.sendMailErrorMessage', sendMailErrorMessage.replace('"', '\\"'));
 			          ]]>
-				</script>
-
-				<property name="uri.var.activity" value="gmail.sendMail" />
-				<property name="uri.var.id" value="" />
-				<property name="uri.var.status" value="Error" />
-				<property name="uri.var.message"
-					expression="fn:concat('Could not send the mail, Error: ', get-property('uri.var.sendMailErrorMessage'))" />
-			</else>
-
-
-		</filter>
-
-		<!-- Response generator -->
-		<call-template target="responseHandlerTemplate">
-			<with-param name="activity" value="{$ctx:uri.var.activity}" />
-			<with-param name="id" value="{$ctx:uri.var.id}" />
-			<with-param name="status" value="{$ctx:uri.var.status}" />
-			<with-param name="message" value="{$ctx:uri.var.message}" />
-		</call-template>
-
-
-	</sequence>
+                </script>
+                <property name="uri.var.activity" value="gmail.sendMail"/>
+                <property name="uri.var.id" value=""/>
+                <property name="uri.var.status" value="Error"/>
+                <property name="uri.var.message"
+                          expression="fn:concat('Could not send the mail, Error: ', get-property('uri.var.sendMailErrorMessage'))"/>
+            </else>
+        </filter>
+        <!-- Response generator -->
+        <call-template target="responseHandlerTemplate">
+            <with-param name="activity" value="{$ctx:uri.var.activity}"/>
+            <with-param name="id" value="{$ctx:uri.var.id}"/>
+            <with-param name="status" value="{$ctx:uri.var.status}"/>
+            <with-param name="message" value="{$ctx:uri.var.message}"/>
+        </call-template>
+    </sequence>
 </template>

@@ -17,7 +17,7 @@
             <property name="redmineApiKey" expression="json-eval($.redmineApiKey)"/>
             <property name="responseType" expression="json-eval($.responseType)"/>
             <property name="projectId" value=""/>
-            <property name="index" value="0" scope="operation"/>
+            <property name="projectsIndex" value="0" scope="operation"/>
             <surveymonkey.init>
                 <accessToken>{$ctx:surveymonkeyAccessToken}</accessToken>
                 <apiUrl>{$ctx:surveymonkeyApiUrl}</apiUrl>
@@ -29,6 +29,9 @@
                 <responseType>{$ctx:responseType}</responseType>
             </redmine.init>
             <redmine.listProjects/>
+            <property name="projectsCount" expression="count(//projects)"/>
+            <property name="textContent"
+                      value="Hi,&lt;br /&gt;Please find the survey result here, This depicts the projects and the number of people who appreciated them.&lt;br /&gt;"/>
             <iterate continueParent="true"
                      id="projectsIterator"
                      preservePayload="true"
@@ -80,10 +83,13 @@
                                 </filter>
                             </then>
                         </filter>
+                        <property name="projectsIndex"
+                                  expression="get-property('operation','projectsIndex') + 1"
+                                  scope="operation"/>
                     </sequence>
                 </target>
             </iterate>
-            <filter xpath="get-property('textContent')!= ''">
+            <filter xpath="(not(get-property('textContent') = '' or (not(string(get-property('textContent'))))))">
                 <then>
                     <redmine.init>
                         <apiUrl>{$ctx:redmineApiUrl}</apiUrl>
@@ -93,6 +99,8 @@
                     <redmine.getIssueCategories>
                         <projectId>{$ctx:projectId}</projectId>
                     </redmine.getIssueCategories>
+                    <property name="recipientsCount" expression="count(//issue_categories)"/>
+                    <property name="assignedId" value=""/>
                     <iterate continueParent="true"
                              id="assigneesIterator"
                              preservePayload="true"
@@ -121,36 +129,53 @@
                                         </filter>
                                     </then>
                                 </filter>
+                                <property name="recipientsIndex"
+                                          expression="get-property('operation','recipientsIndex') + 1"
+                                          scope="operation"/>
                             </sequence>
                         </target>
                     </iterate>
                 </then>
             </filter>
-            <filter xpath="get-property('toRecipients')= null or get-property('toRecipients')= '' or get-property('textContent')= ''">
+            <property name="numberOfResponsesForProjectIterator"
+                      expression="get-property('operation', 'numberOfResponses')+0"/>
+            <filter xpath="0 != get-property('recipientsCount') and (not(get-property('toRecipients') = '' or (not(string(get-property('toRecipients'))))))">
                 <then>
-                    <property name="message"
-                              value="Unable to send the mail (Recipients or message is empty)."/>
-                    <call-template target="responseHandlerTemplate">
-                        <with-param name="activity" value="gmail.sendMail"/>
-                        <with-param name="id" value="{$ctx:id}"/>
-                        <with-param name="status" value="Error"/>
-                        <with-param name="message" value="{$ctx:message}"/>
-                    </call-template>
-                    <loopback/>
-                </then>
-                <else>
-                    <call-template target="sendSurveyResult">
-                        <with-param name="toRecipients" value="{$ctx:toRecipients}"/>
-                        <with-param name="textContent" value="{$ctx:textContent}"/>
-                        <with-param name="username" value="{$ctx:username}"/>
-                        <with-param name="oauthAccessToken" value="{$ctx:oauthAccessToken}"/>
-                    </call-template>
-                    <loopback/>
-                </else>
-            </filter>
-            <filter xpath="get-property('operation', 'index') = get-property('operation', 'numberOfResponses')">
-                <then>
-                    <loopback/>
+                    <filter xpath="(not(get-property('textContent') = '' or (not(string(get-property('textContent'))))))">
+                        <then>
+                            <filter xpath="(not(get-property('toRecipients') = '' or (not(string(get-property('toRecipients'))))))">
+                                <then>
+                                    <call-template target="sendSurveyResult">
+                                        <with-param name="toRecipients" value="{$ctx:toRecipients}"/>
+                                        <with-param name="textContent" value="{$ctx:textContent}"/>
+                                        <with-param name="username" value="{$ctx:username}"/>
+                                        <with-param name="oauthAccessToken" value="{$ctx:oauthAccessToken}"/>
+                                    </call-template>
+                                    <loopback/>
+                                </then>
+                                <else>
+                                    <property name="message" value="Unable to send the mail (Recipient is empty)."/>
+                                    <call-template target="responseHandlerTemplate">
+                                        <with-param name="activity" value="gmail.sendMail"/>
+                                        <with-param name="id" value="{$ctx:id}"/>
+                                        <with-param name="status" value="Error"/>
+                                        <with-param name="message" value="{$ctx:message}"/>
+                                    </call-template>
+                                    <loopback/>
+                                </else>
+                            </filter>
+                        </then>
+                        <else>
+                            <property name="message" value="Unable to send the mail (Message is empty)."/>
+                            <call-template target="responseHandlerTemplate">
+                                <with-param name="activity" value="gmail.sendMail"/>
+                                <with-param name="id" value="{$ctx:id}"/>
+                                <with-param name="status" value="Error"/>
+                                <with-param name="message" value="{$ctx:message}"/>
+                            </call-template>
+                            <loopback/>
+                        </else>
+                    </filter>
                 </then>
             </filter>
         </inSequence>

@@ -47,7 +47,7 @@
                 <then>
                     <property name="message" expression="//errors"/>
                     <property name="message"
-                              expression="fn:concat('Error: ', get-property('message'))"/>
+                              expression="fn:concat('Error: Unable to add the project member (', get-property('message'),')')"/>
                     <call-template target="responseHandlerTemplate">
                         <with-param name="activity" value="redmine.addProjectMember"/>
                         <with-param name="id" value="{$ctx:id}"/>
