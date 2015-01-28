@@ -16,8 +16,7 @@
             <property name="redmineApiUrl" expression="json-eval($.redmineApiUrl)"/>
             <property name="redmineApiKey" expression="json-eval($.redmineApiKey)"/>
             <property name="responseType" expression="json-eval($.responseType)"/>
-            <property name="projectId" value=""/>
-            <property name="projectsIndex" value="0" scope="operation"/>
+            <property name="recipientsIndex" value="0" scope="operation"/>
             <surveymonkey.init>
                 <accessToken>{$ctx:surveymonkeyAccessToken}</accessToken>
                 <apiUrl>{$ctx:surveymonkeyApiUrl}</apiUrl>
@@ -103,24 +102,28 @@
                                          sequential="true">
                                     <target>
                                         <sequence>
-                                            <property name="assignedId" expression="//assigned_to/id/text()"/>
-
-                                            <filter xpath="(not(get-property('assignedId') = '' or (not(string(get-property('assignedId'))))))">
+                                            <property name="assignedTo" expression="//assigned_to"/>
+                                            <filter xpath="(get-property('assignedTo'))">
                                                 <then>
-                                                    <redmine.init>
-                                                        <apiUrl>{$ctx:redmineApiUrl}</apiUrl>
-                                                        <apiKey>{$ctx:redmineApiKey}</apiKey>
-                                                        <responseType>{$ctx:responseType}</responseType>
-                                                    </redmine.init>
-                                                    <redmine.getUser>
-                                                        <userId>{$ctx:assignedId}</userId>
-                                                        <include>{$ctx:include}</include>
-                                                    </redmine.getUser>
-                                                    <property name="assigneeEmail" expression="//mail/text()"/>
-                                                    <filter xpath="(not(get-property('assigneeEmail') = '' or (not(string(get-property('assigneeEmail'))))))">
+                                                    <property name="assignedId" expression="//assigned_to/id/text()"/>
+                                                    <filter xpath="(not(get-property('assignedId') = '' or (not(string(get-property('assignedId'))))))">
                                                         <then>
-                                                            <property name="toRecipients"
-                                                                      expression="fn:concat(get-property('toRecipients'),get-property('assigneeEmail'),',')"/>
+                                                            <redmine.init>
+                                                                <apiUrl>{$ctx:redmineApiUrl}</apiUrl>
+                                                                <apiKey>{$ctx:redmineApiKey}</apiKey>
+                                                                <responseType>{$ctx:responseType}</responseType>
+                                                            </redmine.init>
+                                                            <redmine.getUser>
+                                                                <userId>{$ctx:assignedId}</userId>
+                                                                <include>{$ctx:include}</include>
+                                                            </redmine.getUser>
+                                                            <property name="assigneeEmail" expression="//mail/text()"/>
+                                                            <filter xpath="(not(get-property('assigneeEmail') = '' or (not(string(get-property('assigneeEmail'))))))">
+                                                                <then>
+                                                                    <property name="toRecipients"
+                                                                              expression="fn:concat(get-property('toRecipients'),get-property('assigneeEmail'),',')"/>
+                                                                </then>
+                                                            </filter>
                                                         </then>
                                                     </filter>
                                                 </then>
@@ -134,12 +137,21 @@
                             </then>
                         </filter>
                         <property name="projectId" value=""/>
-                        <property name="projectsIndex"
-                                  expression="get-property('operation','projectsIndex') + 1"
-                                  scope="operation"/>
                     </sequence>
                 </target>
             </iterate>
+            <filter xpath="(get-property('toRecipients') = '' or (not(string(get-property('toRecipients'))))) and get-property('operation', 'recipientsIndex')=get-property('recipientsCount')">
+                <then>
+                    <property name="message" value="Unable to send the mail (Recipient is empty)."/>
+                    <call-template target="responseHandlerTemplate">
+                        <with-param name="activity" value="gmail.sendMail"/>
+                        <with-param name="id" value="{$ctx:id}"/>
+                        <with-param name="status" value="Error"/>
+                        <with-param name="message" value="{$ctx:message}"/>
+                    </call-template>
+                    <loopback/>
+                </then>
+            </filter>
             <filter xpath="not(get-property('toRecipients') = '' or (not(string(get-property('toRecipients')))))">
                 <then>
                     <filter xpath="(not(get-property('textContent') = '' or (not(string(get-property('textContent'))))))">
