@@ -1,10 +1,10 @@
 {
 "redmineApiUrl":"http://testdomain.m.redmine.org",
-"redmineApiKey":"2c8338198c4f29ed56868d44bb469f6915e2ac55",
+"redmineApiKey":"******",
 "responseType":"json",
-"username":"shakila@wso2.com",
-"oauthAccessToken":"ya29.AwEU2VzdJ9zcO2tkyEuLjnPhO00wVgD4szwra0yWJY0ONUjRifl6zHh90cs5EpqzfqTvNHWycKvPzQ",
+"username":"******",
+"oauthAccessToken":"******",
 "surveymonkeyApiUrl":"https://api.surveymonkey.net",
-"surveymonkeyAccessToken":"paTBz61kMlD0mPWrsaHR3921EuYbHlBvqU0GDZQ.5nahBvB1GbdZpbh2WnOzXY4SzYYpDy7zC2BtsoUxxCm-5snVPpjHTMgHFAlPcq.FLQY=",
-"surveymonkeyApiKey":"43xd9y3cjnhb9eab9pv8ksav"
+"surveymonkeyAccessToken":"******",
+"surveymonkeyApiKey":"******"
 }
